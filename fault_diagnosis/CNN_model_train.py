@@ -70,8 +70,8 @@ if __name__ == '__main__':
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print('参数设置完成')
     # 数据路径
-    normal_file_path = '发动机试验数据/高频信号/1800-57%-正常工况/'
-    error_file_path = '发动机试验数据/高频信号/1800-57%-断缸/'
+    normal_file_path = '../发动机试验数据/高频信号/1800-57%-正常工况/'
+    error_file_path = '../发动机试验数据/高频信号/1800-57%-断缸/'
     
     # 构建数据集
     normal = build_dataset(normal_file_path)
@@ -92,7 +92,7 @@ if __name__ == '__main__':
     y_test = torch.tensor(y_test, dtype=torch.long)
     
     # 使用 DataLoader 构建数据加载器
-    train_dataset = TensorDataset(X_train, y_train)
+    train_dataset = TensorDataset(X_train[:30], y_train[:30])
     test_dataset = TensorDataset(X_test, y_test)
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
@@ -102,8 +102,38 @@ if __name__ == '__main__':
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     print('模型构建完成')
     # 训练模型
+    loss_train = []
+    train_acc_list = []
+    test_acc_list = []
     for epoch in range(num_epochs):
         train_loss = train(model, train_loader, optimizer, device)
         train_accuracy = test(model, train_loader, device)
         test_accuracy = test(model, test_loader, device)
+        loss_train.append(train_loss)
+        train_acc_list.append(train_accuracy)
+        test_acc_list.append(test_accuracy)
         print(f'Epoch {epoch+1}/{num_epochs}, Loss: {train_loss:.4f}, Train Accuracy: {train_accuracy:.4f}, Test Accuracy: {test_accuracy:.4f}')
+    import matplotlib.pyplot as plt
+
+    train_epoch_list = list(range(num_epochs))
+    plt.figure(figsize=(10, 5))
+    plt.plot(train_epoch_list, loss_train, color='green', label='loss')
+    # plt.plot(train_epoch_list, train_acc_list, color = 'blue', label='train accuracy')
+    plt.title('Loop')
+    plt.xlabel('epoch')
+    plt.legend()
+    plt.grid(True)
+    # plt.show()
+    # save figure
+    plt.savefig(f'CNN_model_epoches_{num_epochs}_loss.png')
+    # clean figure
+    plt.cla()
+    plt.plot(train_epoch_list, test_acc_list, color='red', label='teat accuracy')
+    plt.plot(train_epoch_list, train_acc_list, color='blue', label='train accuracy')
+    plt.title('Loop')
+    plt.xlabel('epoch')
+    plt.legend()
+    plt.grid(True)
+    # plt.show()
+    # save figure
+    plt.savefig(f'CNN_model_epoches_{num_epochs}_acc.png')

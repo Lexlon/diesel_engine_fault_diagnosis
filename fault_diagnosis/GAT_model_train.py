@@ -75,8 +75,8 @@ if __name__ == '__main__':
     neg_label = 1
     file_nums = 2
     train_epoch = 50
-    normal_file_path = '发动机试验数据/高频信号/1800-57%-正常工况/'
-    error_file_path = '发动机试验数据/高频信号/1800-57%-断缸/'
+    normal_file_path = '../发动机试验数据/高频信号/1800-57%-正常工况/'
+    error_file_path = '../发动机试验数据/高频信号/1800-57%-断缸/'
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     normal = build_dataset(normal_file_path)
     pos_graphs = normal.construct_graph(file_nums=file_nums, label=pos_label,num_nodes=num_nodes)
