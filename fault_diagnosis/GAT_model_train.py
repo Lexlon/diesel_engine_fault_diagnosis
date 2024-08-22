@@ -8,8 +8,8 @@ from dataset_build import build_dataset
 class GAT(torch.nn.Module):
     def __init__(self, in_channels, out_channels):
         super(GAT, self).__init__()
-        self.conv1 = GATConv(in_channels, 8, heads=8, dropout=0.7)
-        self.conv2 = GATConv(8 * 8, out_channels, heads=1, concat=False, dropout=0.7)
+        self.conv1 = GATConv(in_channels, 16, heads=4, dropout=0.2)
+        self.conv2 = GATConv(16 * 4, out_channels, heads=1, concat=False, dropout=0.2)
 
     def forward(self, data):
         x, edge_index, batch = data.x, data.edge_index, data.batch
@@ -69,27 +69,33 @@ def test(model,loader,device):
     return correct / len(loader.dataset)
 
 if __name__ == '__main__':
+    import os
     batch = 64
-    num_nodes = 5
+    num_nodes = 20
     pos_label = 0
     neg_label = 1
+    neg1_label = 2
     file_nums = 2
     train_epoch = 50
-    normal_file_path = '../发动机试验数据/高频信号/1800-57%-正常工况/'
-    error_file_path = '../发动机试验数据/高频信号/1800-57%-断缸/'
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    normal_file_path = current_dir+'/../发动机试验数据/高频信号/1800-57%-0.35气门/'
+    error_file_path = current_dir+'/../发动机试验数据/高频信号/1800-57%-0.5/'
+
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     normal = build_dataset(normal_file_path)
     pos_graphs = normal.construct_graph(file_nums=file_nums, label=pos_label,num_nodes=num_nodes)
     error = build_dataset(error_file_path)
     neg_graphs = error.construct_graph(file_nums=file_nums, label=neg_label,num_nodes=num_nodes)
-    all_graphs = pos_graphs + neg_graphs
+    error1 = build_dataset(error_file_path)
+    neg1_graphs = error1.construct_graph(file_nums=file_nums, label=neg1_label,num_nodes=num_nodes)
+    all_graphs = pos_graphs + neg_graphs + neg1_graphs
     random.shuffle(all_graphs)
     dataset = all_graphs
     train_dataset = dataset[:int(0.1 * len(dataset))]
     test_dataset = dataset[int(0.5 * len(dataset)):]
     train_loader = DataLoader(train_dataset, batch_size=batch, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=batch, shuffle=True)
-    model = GCN(in_channels=7200//num_nodes, out_channels=2).to(device)
+    model = GAT(in_channels=7200//num_nodes, out_channels=3).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=5e-4)
     loss_train = []
     train_acc_list = []
@@ -115,7 +121,7 @@ if __name__ == '__main__':
     plt.grid(True)
     # plt.show()
     # save figure
-    plt.savefig(f'GAT_model_nodes_{num_nodes}_epoches_{train_epoch}_loss.png')
+    plt.savefig(current_dir+f'/GAT_model_3_nodes_{num_nodes}_epoches_{train_epoch}_loss.png')
     # clean figure
     plt.cla()
     plt.plot(train_epoch_list, test_acc_list, color = 'red', label='teat accuracy')
@@ -126,7 +132,7 @@ if __name__ == '__main__':
     plt.grid(True)
     # plt.show()
     # save figure
-    plt.savefig(f'GAT_model_nodes_{num_nodes}_epoches_{train_epoch}_acc.png')
+    plt.savefig(current_dir+f'/GAT_model_3_nodes_{num_nodes}_epoches_{train_epoch}_acc.png')
     # plt.ylabel('loa Amplitude')
   
 

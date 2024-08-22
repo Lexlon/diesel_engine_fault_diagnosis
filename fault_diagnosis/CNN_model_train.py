@@ -60,27 +60,30 @@ def test(model, test_loader, device):
     return accuracy
 
 if __name__ == '__main__':
+    import os
     # 参数设置
     batch_size = 16
     input_size = 1  # 单通道输入
-    num_classes = 2  # 分类数
+    num_classes = 3  # 分类数
     learning_rate = 0.001
-    num_epochs = 50
+    num_epochs = 30
     file_nums = 2
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print('参数设置完成')
     # 数据路径
-    normal_file_path = '../发动机试验数据/高频信号/1800-57%-正常工况/'
-    error_file_path = '../发动机试验数据/高频信号/1800-57%-断缸/'
-    
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    normal_file_path = current_dir+'/../发动机试验数据/高频信号/1800-57%-0.35气门/'
+    error1_file_path = current_dir+'/../发动机试验数据/高频信号/1800-57%-0.5/'
+    error2_file_path = current_dir+'/../发动机试验数据/高频信号/1800-57%-0.4排气门/'
     # 构建数据集
     normal = build_dataset(normal_file_path)
     pos_data = normal._read_data(nums=file_nums)
-    error = build_dataset(error_file_path)
-    neg_data = error._read_data(nums=file_nums)
-    
-    X = np.concatenate((pos_data, neg_data), axis=0)
-    y = np.concatenate((np.zeros(pos_data.shape[0]), np.ones(neg_data.shape[0])), axis=0)  # 0表示正常，1表示断缸
+    error1 = build_dataset(error1_file_path)
+    neg1_data = error1._read_data(nums=file_nums)
+    error2 = build_dataset(error1_file_path)
+    neg2_data = error2._read_data(nums=file_nums)
+    X = np.concatenate((pos_data, neg1_data, neg2_data), axis=0)
+    y = np.concatenate((np.zeros(pos_data.shape[0]), np.ones(neg1_data.shape[0]), np.full(neg2_data.shape[0],2)), axis=0)  # 0表示正常，1表示断缸
     
     # 划分训练集和测试集
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.9, random_state=42, shuffle=True)
@@ -92,7 +95,7 @@ if __name__ == '__main__':
     y_test = torch.tensor(y_test, dtype=torch.long)
     
     # 使用 DataLoader 构建数据加载器
-    train_dataset = TensorDataset(X_train[:30], y_train[:30])
+    train_dataset = TensorDataset(X_train[:50], y_train[:50])
     test_dataset = TensorDataset(X_test, y_test)
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
@@ -125,7 +128,7 @@ if __name__ == '__main__':
     plt.grid(True)
     # plt.show()
     # save figure
-    plt.savefig(f'CNN_model_epoches_{num_epochs}_loss.png')
+    plt.savefig(current_dir+f'/CNN_model_{num_classes}_epoches_{num_epochs}_loss.png')
     # clean figure
     plt.cla()
     plt.plot(train_epoch_list, test_acc_list, color='red', label='teat accuracy')
@@ -136,4 +139,4 @@ if __name__ == '__main__':
     plt.grid(True)
     # plt.show()
     # save figure
-    plt.savefig(f'CNN_model_epoches_{num_epochs}_acc.png')
+    plt.savefig(current_dir+f'/CNN_model_{num_classes}_epoches_{num_epochs}_acc.png')
