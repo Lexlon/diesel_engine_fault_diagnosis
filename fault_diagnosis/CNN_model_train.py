@@ -10,25 +10,33 @@ import torch.nn.functional as F
 from tqdm import tqdm
 
 # 定义1D CNN分类器
+import torch.nn as nn
+import torch.nn.functional as F
+
 class CNN1DClassifier(nn.Module):
     def __init__(self, input_size, num_classes):
         super(CNN1DClassifier, self).__init__()
-        self.conv1 = nn.Conv1d(in_channels=input_size, out_channels=64, kernel_size=3, padding=1)
-        self.conv2 = nn.Conv1d(in_channels=64, out_channels=128, kernel_size=3, padding=1)
-        self.pool = nn.MaxPool1d(kernel_size=2, stride=2)
-        self.fc1 = nn.Linear(128 * (7200 // 2 // 2), 256)  # 更新后的输入大小
+        self.conv1 = nn.Conv1d(in_channels=input_size, out_channels=8, kernel_size=50)
+        self.conv2 = nn.Conv1d(in_channels=8, out_channels=4, kernel_size=20)
+        self.pool1 = nn.MaxPool1d(kernel_size=10, stride=2)
+        self.pool2 = nn.MaxPool1d(kernel_size=4, stride=1)
+        self.fc1 = nn.Linear(4 * 3549, 256)
         self.fc2 = nn.Linear(256, num_classes)
-        
+
     def forward(self, x):
-        x = x.permute(0, 2, 1)  # 调整维度以适应Conv1d的输入 (batch_size, channels, seq_len)
+        x = x.permute(0, 2, 1)  # 确保输入数据也在设备上
         x = F.relu(self.conv1(x))
-        x = self.pool(x)
+        x = self.pool1(x)
+        # print(x.shape)
         x = F.relu(self.conv2(x))
-        x = self.pool(x)
-        x = x.view(x.size(0), -1)  # Flatten操作
+        x = self.pool2(x)
+        # print(x.shape)
+        x = x.view(x.size(0), -1)
         x = F.relu(self.fc1(x))
         x = self.fc2(x)
         return x
+
+
 
 # 训练模型函数
 def train(model, train_loader, optimizer, device):
@@ -62,28 +70,41 @@ def test(model, test_loader, device):
 if __name__ == '__main__':
     import os
     # 参数设置
-    batch_size = 16
+    batch_size = 128
     input_size = 1  # 单通道输入
-    num_classes = 3  # 分类数
+    num_classes = 5  # 分类数
     learning_rate = 0.001
-    num_epochs = 30
+    num_epochs = 50
     file_nums = 2
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
+    print(device)
     print('参数设置完成')
     # 数据路径
     current_dir = os.path.dirname(os.path.abspath(__file__))
     normal_file_path = current_dir+'/../发动机试验数据/高频信号/1800-57%-0.35气门/'
-    error1_file_path = current_dir+'/../发动机试验数据/高频信号/1800-57%-0.5/'
+    error1_file_path = current_dir+'/../发动机试验数据/高频信号/1800-57%-排气门0.5/'
     error2_file_path = current_dir+'/../发动机试验数据/高频信号/1800-57%-0.4排气门/'
+    error3_file_path = current_dir+'/../发动机试验数据/高频信号/1800-57%-0.2/'
+    error4_file_path = current_dir+'/../发动机试验数据/高频信号/1800-57%-0.5/'
     # 构建数据集
     normal = build_dataset(normal_file_path)
     pos_data = normal._read_data(nums=file_nums)
     error1 = build_dataset(error1_file_path)
     neg1_data = error1._read_data(nums=file_nums)
-    error2 = build_dataset(error1_file_path)
+    error2 = build_dataset(error2_file_path)
     neg2_data = error2._read_data(nums=file_nums)
-    X = np.concatenate((pos_data, neg1_data, neg2_data), axis=0)
-    y = np.concatenate((np.zeros(pos_data.shape[0]), np.ones(neg1_data.shape[0]), np.full(neg2_data.shape[0],2)), axis=0)  # 0表示正常，1表示断缸
+    error3 = build_dataset(error3_file_path)
+    neg3_data = error3._read_data(nums=file_nums)
+    error4 = build_dataset(error4_file_path)
+    neg4_data = error4._read_data(nums=file_nums)
+    X = np.concatenate((pos_data, neg1_data, neg2_data, neg3_data, neg4_data), axis=0)
+
+    y = np.concatenate((np.zeros(pos_data.shape[0]), 
+    np.ones(neg1_data.shape[0]), 
+    np.full(neg2_data.shape[0],2),
+    np.full(neg3_data.shape[0],3),
+    np.full(neg4_data.shape[0],4)
+    ), axis=0)  # 0表示正常，1表示断缸
     
     # 划分训练集和测试集
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.9, random_state=42, shuffle=True)
@@ -95,7 +116,7 @@ if __name__ == '__main__':
     y_test = torch.tensor(y_test, dtype=torch.long)
     
     # 使用 DataLoader 构建数据加载器
-    train_dataset = TensorDataset(X_train[:50], y_train[:50])
+    train_dataset = TensorDataset(X_train[:100], y_train[:100])
     test_dataset = TensorDataset(X_test, y_test)
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
@@ -128,7 +149,7 @@ if __name__ == '__main__':
     plt.grid(True)
     # plt.show()
     # save figure
-    plt.savefig(current_dir+f'/CNN_model_{num_classes}_epoches_{num_epochs}_loss.png')
+    plt.savefig(current_dir+f'/../result/CNN/CNN_model_{num_classes}_epoches_{num_epochs}_loss.png')
     # clean figure
     plt.cla()
     plt.plot(train_epoch_list, test_acc_list, color='red', label='teat accuracy')
@@ -139,4 +160,4 @@ if __name__ == '__main__':
     plt.grid(True)
     # plt.show()
     # save figure
-    plt.savefig(current_dir+f'/CNN_model_{num_classes}_epoches_{num_epochs}_acc.png')
+    plt.savefig(current_dir+f'/../result/CNN/CNN_model_{num_classes}_epoches_{num_epochs}_acc.png')
